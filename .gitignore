@@ -1,0 +1,32 @@
+# --- Dependencies ---
+/vendor/
+composer.phar
+
+# --- Local Test Scripts ---
+# Ignore the manual test file I suggested earlier
+test_local.php
+*.local.php
+
+# --- IDEs & Editors ---
+.idea/
+.vscode/
+.nbproject/
+.settings/
+*.sublime-workspace
+*.swp
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
+
+# --- PHPUnit / Testing Artifacts ---
+.phpunit.result.cache
+/build/
+/coverage/
+phpunit.xml
+# Keep phpunit.xml.dist (shared config), ignore local override (phpunit.xml)
+
+# --- Environment Variables ---
+# (Should not be needed for this library, but good practice to block)
+.env
+.env.local
