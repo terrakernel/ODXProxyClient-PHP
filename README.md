@@ -3,11 +3,10 @@
 
 
 A high-performance, low-footprint, zero-dependency PHP client for interacting with Odoo instances via the ODXProxy Gateway.
-This library is designed to be lightweight (using native curl and json extensions only) while maintaining strict type safety and security. It bridges the gap between Java/Kotlin's stateful nature and PHP's stateless request lifecycle.
+This library is designed to be lightweight (using native curl and json extensions only) while maintaining strict type safety and security.
 
-Requirements
-
-- PHP: >= 7.4
+### Requirements
+- PHP >= 7.4
 - Extensions: ext-curl, ext-json
 
 ### Installation
