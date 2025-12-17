@@ -1,4 +1,5 @@
 # ODXProxy Client for PHP
+![Static Badge](https://img.shields.io/badge/License-MIT-green)
 ![Static Badge](https://img.shields.io/badge/php-%3E%3D7.4-white?labelColor=%23474A8A&color=%23787CB5)
 
 
