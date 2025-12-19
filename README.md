@@ -103,7 +103,13 @@ $options = (new KeywordRequest())
     ->setLimit(5)
     ->setOffset(0)
     ->setOrder('name asc')
-    ->setFields(['id', 'name', 'email']); // Only fetch these fields
+    ->setFields(['id', 'name', 'email']) // Only fetch these fields
+    ->setContext([
+        'lang' => 'en_US',
+        'tz' => 'Asia/Jakarta',
+        'allowed_company_ids' => [1],
+        'default_company_id' => 1
+    ]); 
 
 // Pass options as the last argument
 $users = Odx::searchRead('res.users', [], $options);

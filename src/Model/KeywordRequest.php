@@ -17,6 +17,7 @@ class KeywordRequest implements \JsonSerializable
     public function setOrder(string $order): self { $this->order = $order; return $this; }
     public function setLimit(int $limit): self { $this->limit = $limit; return $this; }
     public function setOffset(int $offset): self { $this->offset = $offset; return $this; }
+    public function setContext(array $context): self { $this->context = $context; return $this;}
     
     // PHP doesn't have data class copy(), so we manually clone for pagination reset
     public function resetPagination(): self
