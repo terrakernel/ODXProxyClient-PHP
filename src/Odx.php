@@ -56,26 +56,26 @@ class Odx
     
     public static function read(string $model, array $ids, ?KeywordRequest $kw = null): array
     {
-        return self::getDefault()->execute('read', $model, [$ids], $kw?->resetPagination());
+        return self::client()->execute('read', $model, [$ids], $kw?->resetPagination());
     }
 
     public static function create(string $model, array $values, ?KeywordRequest $kw = null)
     {
-        return self::getDefault()->execute('create', $model, [$values], $kw?->resetPagination());
+        return self::client()->execute('create', $model, [$values], $kw?->resetPagination());
     }
 
     public static function write(string $model, array $ids, array $values, ?KeywordRequest $kw = null): bool
     {
-        return (bool) self::getDefault()->execute('write', $model, [$ids, $values], $kw?->resetPagination());
+        return (bool) self::client()->execute('write', $model, [$ids, $values], $kw?->resetPagination());
     }
 
     public static function unlink(string $model, array $ids): bool
     {
-        return (bool) self::getDefault()->execute('unlink', $model, [$ids]);
+        return (bool) self::client()->execute('unlink', $model, [$ids]);
     }
 
     public static function call(string $model, string $method, array $args = [], ?KeywordRequest $kw = null)
     {
-        return self::getDefault()->execute('call_method', $model, $args, $kw, $method);
+        return self::client()->execute('call_method', $model, $args, $kw, $method);
     }
 }
