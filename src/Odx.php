@@ -46,36 +46,41 @@ class Odx
 
     public static function search(string $model, array $domain, ?KeywordRequest $kw = null): array
     {
-        return self::client()->execute('search', $model, [$domain], $kw?->resetPagination());
+        return self::client()->search($model, $domain, $kw);
+    }
+
+    public static function searchCount(string $model, array $domain, ?KeywordRequest $kw = null): int
+    {
+        return self::client()->searchCount($model, $domain, $kw);
     }
 
     public static function searchRead(string $model, array $domain, ?KeywordRequest $kw = null): array
     {
-        return self::client()->execute('search_read', $model, [$domain], $kw);
+        return self::client()->searchRead($model, $domain, $kw);
     }
-    
+
     public static function read(string $model, array $ids, ?KeywordRequest $kw = null): array
     {
-        return self::client()->execute('read', $model, [$ids], $kw?->resetPagination());
+        return self::client()->read($model, $ids, $kw);
     }
 
     public static function create(string $model, array $values, ?KeywordRequest $kw = null)
     {
-        return self::client()->execute('create', $model, [$values], $kw?->resetPagination());
+        return self::client()->create($model, $values, $kw);
     }
 
     public static function write(string $model, array $ids, array $values, ?KeywordRequest $kw = null): bool
     {
-        return (bool) self::client()->execute('write', $model, [$ids, $values], $kw?->resetPagination());
+        return self::client()->write($model, $ids, $values, $kw);
     }
 
     public static function unlink(string $model, array $ids): bool
     {
-        return (bool) self::client()->execute('unlink', $model, [$ids]);
+        return self::client()->unlink($model, $ids);
     }
 
     public static function call(string $model, string $method, array $args = [], ?KeywordRequest $kw = null)
     {
-        return self::client()->execute('call_method', $model, $args, $kw, $method);
+        return self::client()->call($model, $method, $args, $kw);
     }
 }

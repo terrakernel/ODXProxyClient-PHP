@@ -1,6 +1,8 @@
 # --- Dependencies ---
 /vendor/
 composer.phar
+# Library: don't pin the lock so each PHP version resolves its own dev deps (CI matrix).
+composer.lock
 
 # --- Local Test Scripts ---
 # Ignore the manual test file I suggested earlier
@@ -21,6 +23,7 @@ Thumbs.db
 
 # --- PHPUnit / Testing Artifacts ---
 .phpunit.result.cache
+.phpunit.cache/
 /build/
 /coverage/
 phpunit.xml

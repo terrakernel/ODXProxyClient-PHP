@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <!--
+      The opt-in live suite (tests/Live) is intentionally NOT listed above, so it never
+      runs in the default `phpunit` / `composer test`. Run it with `composer test:live`.
+      It self-skips unless these are set in the environment — provide them via a gitignored
+      `phpunit.xml` override, shell exports, or CI secrets. NEVER commit credentials here:
+        ODX_GATEWAY_URL, ODX_GATEWAY_API_KEY, ODX_ODOO_URL, ODX_USER_ID, ODX_DB, ODX_API_KEY
+    -->
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>

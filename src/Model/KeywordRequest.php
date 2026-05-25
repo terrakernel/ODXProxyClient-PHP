@@ -30,9 +30,11 @@ class KeywordRequest implements \JsonSerializable
         return $clone;
     }
 
-    public function jsonSerialize(): array
+    public function jsonSerialize(): object
     {
-        return array_filter([
+        // Cast to object so an empty keyword encodes as {} (JSON object), never []
+        // (a JSON array) — the gateway expects `keyword` to be an object.
+        return (object) array_filter([
             'fields' => $this->fields,
             'order' => $this->order,
             'limit' => $this->limit,

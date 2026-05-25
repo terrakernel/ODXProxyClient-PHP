@@ -20,6 +20,48 @@ class OdxProxyClient
         $this->config = $config;
     }
 
+    // --- CONVENIENCE METHODS (idiomatic wrappers over execute) ---
+
+    public function search(string $model, array $domain, ?KeywordRequest $kw = null): array
+    {
+        return $this->execute('search', $model, [$domain], $kw?->resetPagination());
+    }
+
+    public function searchCount(string $model, array $domain, ?KeywordRequest $kw = null): int
+    {
+        return (int) $this->execute('search_count', $model, [$domain], $kw?->resetPagination());
+    }
+
+    public function searchRead(string $model, array $domain, ?KeywordRequest $kw = null): array
+    {
+        return $this->execute('search_read', $model, [$domain], $kw);
+    }
+
+    public function read(string $model, array $ids, ?KeywordRequest $kw = null): array
+    {
+        return $this->execute('read', $model, [$ids], $kw?->resetPagination());
+    }
+
+    public function create(string $model, array $values, ?KeywordRequest $kw = null)
+    {
+        return $this->execute('create', $model, [$values], $kw?->resetPagination());
+    }
+
+    public function write(string $model, array $ids, array $values, ?KeywordRequest $kw = null): bool
+    {
+        return (bool) $this->execute('write', $model, [$ids, $values], $kw?->resetPagination());
+    }
+
+    public function unlink(string $model, array $ids): bool
+    {
+        return (bool) $this->execute('unlink', $model, [$ids]);
+    }
+
+    public function call(string $model, string $method, array $args = [], ?KeywordRequest $kw = null)
+    {
+        return $this->execute('call_method', $model, $args, $kw, $method);
+    }
+
     /**
      * Generic execution method replacing postRequest/postRequestList
      * @return mixed (The 'result' part of the response)
@@ -105,11 +147,9 @@ class OdxProxyClient
         return $response;
     }
     
-    // Allow closing resource explicitly if needed
+    // Allow releasing the connection explicitly if needed.
+    // curl_close() has been a no-op since PHP 8.0; dropping the last reference frees the handle.
     public static function close(): void {
-        if (self::$ch) {
-            curl_close(self::$ch);
-            self::$ch = null;
-        }
+        self::$ch = null;
     }
 }
