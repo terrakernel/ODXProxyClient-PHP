@@ -41,34 +41,9 @@ jobs:
       - name: Run unit + integration suites
         run: composer test
 
-  # Opt-in live suite against the real gateway. Only runs on pushes to main and
-  # manual dispatch — never on PRs, where secrets are unavailable (forks) and we
-  # don't want to hit a real Odoo on every proposed change. The suite self-skips
-  # if any ODX_* var is missing, so a misconfigured secret degrades to a skip.
-  live:
-    name: Live (real gateway)
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: curl, json
-          coverage: none
-
-      - name: Install dependencies
-        uses: ramsey/composer-install@v3
-
-      - name: Run live suite
-        env:
-          ODX_GATEWAY_URL: ${{ secrets.ODX_GATEWAY_URL }}
-          ODX_GATEWAY_API_KEY: ${{ secrets.ODX_GATEWAY_API_KEY }}
-          ODX_ODOO_URL: ${{ secrets.ODX_ODOO_URL }}
-          ODX_USER_ID: ${{ secrets.ODX_USER_ID }}
-          ODX_DB: ${{ secrets.ODX_DB }}
-          ODX_API_KEY: ${{ secrets.ODX_API_KEY }}
-        run: composer test:live
+  # NOTE: The live suite (composer test:live) is intentionally NOT run in CI.
+  # The gateway sits behind Cloudflare, which blocks GitHub Actions' datacenter
+  # runner IPs with a 403 before the request reaches the gateway's auth — so it
+  # fails from CI even with valid ODX_* secrets. Run it locally / manually with
+  # `composer test:live`. To re-enable in CI later, allowlist the runner at
+  # Cloudflare (IP ranges or a shared bypass header) or use a self-hosted runner.
