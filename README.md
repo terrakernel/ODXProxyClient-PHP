@@ -1,6 +1,5 @@
 # ODXProxy Client for PHP
 [![Latest Version](https://img.shields.io/packagist/v/odxproxy/client)](https://packagist.org/packages/odxproxy/client)
-[![Total Downloads](https://img.shields.io/packagist/dt/odxproxy/client)](https://packagist.org/packages/odxproxy/client)
 ![PHP Version](https://img.shields.io/packagist/php-v/odxproxy/client)
 ![License](https://img.shields.io/packagist/l/odxproxy/client)
 
