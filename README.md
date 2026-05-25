@@ -1,6 +1,8 @@
 # ODXProxy Client for PHP
-![Static Badge](https://img.shields.io/badge/License-MIT-green)
-![Static Badge](https://img.shields.io/badge/php-%3E%3D8.1-white?labelColor=%23474A8A&color=%23787CB5)
+[![Latest Version](https://img.shields.io/packagist/v/odxproxy/client)](https://packagist.org/packages/odxproxy/client)
+[![Total Downloads](https://img.shields.io/packagist/dt/odxproxy/client)](https://packagist.org/packages/odxproxy/client)
+![PHP Version](https://img.shields.io/packagist/php-v/odxproxy/client)
+![License](https://img.shields.io/packagist/l/odxproxy/client)
 
 
 A high-performance, low-footprint, zero-dependency PHP client for interacting with Odoo instances via the ODXProxy Gateway.
