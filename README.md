@@ -1,13 +1,13 @@
 # ODXProxy Client for PHP
 ![Static Badge](https://img.shields.io/badge/License-MIT-green)
-![Static Badge](https://img.shields.io/badge/php-%3E%3D7.4-white?labelColor=%23474A8A&color=%23787CB5)
+![Static Badge](https://img.shields.io/badge/php-%3E%3D8.1-white?labelColor=%23474A8A&color=%23787CB5)
 
 
 A high-performance, low-footprint, zero-dependency PHP client for interacting with Odoo instances via the ODXProxy Gateway.
 This library is designed to be lightweight (using native curl and json extensions only) while maintaining strict type safety and security.
 
 ### Requirements
-- PHP >= 7.4
+- PHP >= 8.1
 - Extensions: ext-curl, ext-json
 
 ### Installation
@@ -48,12 +48,14 @@ Combines searching and reading in one optimized call.
 ```php
 $domain = [['type', '=', 'invoice']];
 $records = Odx::searchRead('account.move', $domain);
-searchCount
+```
+
+#### searchCount
 Get the number of records matching a domain.
-code
-PHP
+```php
 $count = Odx::searchCount('sale.order', [['state', '=', 'sale']]);
 ```
+
 #### read
 Read specific fields from specific IDs.
 ```php
