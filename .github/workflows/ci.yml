@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Unit + integration suites. No credentials needed: the integration suite
+  # boots a local `php -S` mock gateway, so this runs on every push and PR
+  # (forks included) across the PHP range the library supports.
+  test:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: curl, json
+          coverage: none
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v3
+
+      - name: Run unit + integration suites
+        run: composer test
+
+  # Opt-in live suite against the real gateway. Only runs on pushes to main and
+  # manual dispatch — never on PRs, where secrets are unavailable (forks) and we
+  # don't want to hit a real Odoo on every proposed change. The suite self-skips
+  # if any ODX_* var is missing, so a misconfigured secret degrades to a skip.
+  live:
+    name: Live (real gateway)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, json
+          coverage: none
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v3
+
+      - name: Run live suite
+        env:
+          ODX_GATEWAY_URL: ${{ secrets.ODX_GATEWAY_URL }}
+          ODX_GATEWAY_API_KEY: ${{ secrets.ODX_GATEWAY_API_KEY }}
+          ODX_ODOO_URL: ${{ secrets.ODX_ODOO_URL }}
+          ODX_USER_ID: ${{ secrets.ODX_USER_ID }}
+          ODX_DB: ${{ secrets.ODX_DB }}
+          ODX_API_KEY: ${{ secrets.ODX_API_KEY }}
+        run: composer test:live
