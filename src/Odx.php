@@ -6,6 +6,7 @@ namespace OdxProxy;
 
 use OdxProxy\Client\OdxClientConfig;
 use OdxProxy\Client\OdxProxyClient;
+use OdxProxy\Client\OdxV2Client;
 use OdxProxy\Model\KeywordRequest;
 
 class Odx
@@ -40,6 +41,15 @@ class Odx
             throw new \RuntimeException("OdxProxy not initialized. Call Odx::init() globally or use Odx::with() locally.");
         }
         return self::$globalInstance;
+    }
+
+    /**
+     * The v2 API (ODXProxy 0.9.0+, Odoo JSON-2, Odoo 19+) on the global instance.
+     * For a specific tenant use `Odx::with($config)->v2()`.
+     */
+    public static function v2(): OdxV2Client
+    {
+        return self::client()->v2();
     }
 
     // --- PROXY METHODS (Forward calls to the Global Instance) ---

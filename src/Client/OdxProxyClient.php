@@ -63,6 +63,16 @@ class OdxProxyClient
     }
 
     /**
+     * The v2 API (ODXProxy 0.9.0+ `/v2/odoo/*`, Odoo JSON-2, Odoo 19+) for this
+     * client's configuration. Works the same on the global client
+     * (`Odx::v2()`) and on a disposable one (`Odx::with($cfg)->v2()`).
+     */
+    public function v2(): OdxV2Client
+    {
+        return new OdxV2Client($this, $this->config);
+    }
+
+    /**
      * Generic execution method replacing postRequest/postRequestList
      * @return mixed (The 'result' part of the response)
      */
@@ -87,11 +97,20 @@ class OdxProxyClient
         // Clean nulls from top level to match Kotlin "encodeDefaults = true" behavior logic
         $payload = array_filter($payload, fn($v) => $v !== null);
 
-        $responseBody = $this->sendViaCurl(json_encode($payload));
+        [$responseBody, $httpCode] = $this->post('/api/odoo/execute', json_encode($payload));
+
+        if ($httpCode >= 400) {
+            // Attempt to parse error from body. v1 keeps the HTTP status as the code and
+            // the whole envelope as data; OdxException::rpcCode() reads the envelope code.
+            $err = json_decode($responseBody, true);
+            $msg = $err['error']['message'] ?? "HTTP Error $httpCode";
+            throw new OdxException($httpCode, $msg, is_array($err) ? $err : null, $httpCode);
+        }
+
         $decoded = json_decode($responseBody, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new OdxException(500, "JSON Decode Error: " . json_last_error_msg());
+            throw new OdxException(500, "JSON Decode Error: " . json_last_error_msg(), null, $httpCode);
         }
 
         // Handle Protocol Errors
@@ -100,14 +119,54 @@ class OdxProxyClient
             throw new OdxException(
                 $err['code'] ?? 500, 
                 $err['message'] ?? 'Unknown Error', 
-                $err['data'] ?? null
+                $err['data'] ?? null,
+                $httpCode
             );
         }
 
         return $decoded['result'] ?? null;
     }
 
-    private function sendViaCurl(string $jsonPayload): string
+    /**
+     * @internal Used by OdxV2Client. POSTs `$payload` to `$path` and returns the
+     * envelope's `result`, or throws.
+     *
+     * Unlike v1's execute(), the code is always the envelope's JSON-RPC code when
+     * there is one (e.g. -32000 on a 401, -32007 on a 400, or Odoo's HTTP status
+     * on a 200), with the HTTP status in `httpStatus` and Odoo's error object in
+     * `data`. Only a non-2xx with no envelope uses the HTTP status as the code.
+     */
+    public function postEnvelope(string $path, array $payload)
+    {
+        [$responseBody, $httpCode] = $this->post($path, json_encode($payload));
+        $decoded = json_decode($responseBody, true);
+
+        if (is_array($decoded) && isset($decoded['error']) && is_array($decoded['error'])) {
+            $err = $decoded['error'];
+            $data = $err['data'] ?? null;
+            throw new OdxException(
+                is_int($err['code'] ?? null) ? $err['code'] : $httpCode,
+                is_string($err['message'] ?? null) ? $err['message'] : 'Unknown Error',
+                is_array($data) ? $data : null,
+                $httpCode
+            );
+        }
+        if ($httpCode >= 400) {
+            throw new OdxException($httpCode, "HTTP Error $httpCode", null, $httpCode);
+        }
+        if (!is_array($decoded) || !array_key_exists('result', $decoded)) {
+            throw new OdxException(500, 'Invalid response from proxy: ' . substr($responseBody, 0, 200), null, $httpCode);
+        }
+        return $decoded['result'];
+    }
+
+    /**
+     * POST a JSON body to `{gatewayUrl}{$path}` over the shared curl handle.
+     * Returns [body, httpStatus]; throws only when no response arrived.
+     *
+     * @return array{0: string, 1: int}
+     */
+    private function post(string $path, string $jsonPayload): array
     {
         if (self::$ch === null) {
             self::$ch = curl_init();
@@ -122,7 +181,7 @@ class OdxProxyClient
             ]);
         }
 
-        curl_setopt(self::$ch, CURLOPT_URL, $this->config->gatewayUrl . '/api/odoo/execute');
+        curl_setopt(self::$ch, CURLOPT_URL, $this->config->gatewayUrl . $path);
         curl_setopt(self::$ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
             'X-Api-Key: ' . $this->config->apiKey
@@ -137,14 +196,7 @@ class OdxProxyClient
             throw new OdxException(0, 'Curl Error: ' . curl_error(self::$ch));
         }
 
-        if ($httpCode >= 400) {
-            // Attempt to parse error from body
-            $err = json_decode($response, true);
-            $msg = $err['error']['message'] ?? "HTTP Error $httpCode";
-            throw new OdxException($httpCode, $msg, $err);
-        }
-
-        return $response;
+        return [$response, (int) $httpCode];
     }
     
     // Allow releasing the connection explicitly if needed.
