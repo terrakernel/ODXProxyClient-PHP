@@ -150,6 +150,55 @@ $v2->call('res.partner', 'name_search', ['name' => 'Acm', 'limit' => 5]);
 - **Multi-database hosts:** the database is selected by header and filtered by the server's `dbfilter`. If the host picks the database from its hostname, `url` must be that database's own hostname. Otherwise calls fail with `isJson2Unavailable()`.
 - **Binary fields on Odoo 20+** read as `['content' => ..., 'filename' => ..., 'size' => ...]` instead of a base64 string. This is an Odoo 20 change and applies to v1 too.
 
+## ODXBrain — which model, which SOP
+
+ODXProxy **0.10.0+** can front **ODXBrain**, an optional sidecar that answers the planning questions an LLM asks before it calls Odoo: *which model holds this data?* and *which SOP covers this task?* It never contacts Odoo and needs no Odoo credentials, only the proxy's `gateway_api_key`. Use `Odx::brain()` for the global instance, or `Odx::with($config)->brain()` for one tenant:
+
+```php
+use OdxProxy\Odx;
+use OdxProxy\Exception\OdxBrainNotInstalledException;
+
+$brain = Odx::brain();
+
+if ($brain->isAvailable()) {                       // GET /_/about features.odxbrain
+    $facts = Odx::v2()->brainFacts();              // ['odooVersion' => '19.0', 'edition' => 'enterprise'], cached per URL
+                                                   // (v1: Odx::client()->brainFacts())
+    $models = $brain->resolveModel('which invoice is not paid yet', ...$facts);
+    foreach ($models['candidates'] as $c) {        // every candidate, in rank order
+        $fields = Odx::v2()->fieldsGet($c['model']);
+    }
+
+    $sop = $brain->resolveSop('record a vendor bill from a purchase order',
+        installedModules: ['account', 'purchase'], ...$facts);
+    if (($sop['match'] ?? null) === 'none') {
+        // no confident SOP: ask the user, don't run the nearest one
+    }
+
+    $info = $brain->info();                        // model, corpus and SOP set, Odoo range covered
+}
+
+try {
+    $brain->resolveModel('customer addresses');
+} catch (OdxBrainNotInstalledException $e) {
+    // this proxy has no ODXBrain: hide the feature, don't retry
+}
+```
+
+- **Arguments:** `resolveModel($query, odooVersion:, edition:, k:, extra:, requestId:, timeout:)` and `resolveSop($query, odooVersion:, edition:, installedModules:, company:, k:, extra:, requestId:, timeout:)`. Unset arguments are **omitted, never sent as `null`**. A missing `odooVersion` / `edition` filters nothing. **Don't guess them:** a wrong version silently removes correct answers, so get them from `brainFacts()` or leave them out. `extra:` passes request fields this SDK doesn't know yet. `timeout:` (seconds) is sent as `x-request-timeout`.
+- **Results are ODXBrain's response, decoded as-is.** Every candidate is returned in order and unknown fields are kept. Don't filter on `score`: the ordering is the contract, the scale is not. Watch the conditional fields: `excluded`, `filtered`, `version_unaudited`, `candidates[].provisional`, and for SOPs `match` and `facts_missing`. A SOP's `version` is opaque, so compare it and don't parse it. The SOP body comes from the doc manager (odxdocs), not the proxy.
+- **Errors** are `OdxBrainException` subclasses, all of which extend `OdxException`:
+
+| Exception | When | Retry? |
+|---|---|---|
+| `OdxBrainNotInstalledException` | `-32008` / 501, or a bare 404 from a proxy older than 0.10.0 | no |
+| `OdxBrainUnavailableException` | `-32009` / 502 unreachable (`isRetryable()`), or `503` on HTTP 200: index not loaded | once / no |
+| `OdxBrainTimeoutException` | `-32010` / 504 | once |
+| `OdxBrainConfigException` | `-32011` / 502: ODXBrain rejected the **proxy's** key. This is an operator problem, not the caller's auth. | no |
+| `OdxBrainRequestException` | `400` on HTTP 200: ODXBrain rejected the input | no |
+| `OdxBrainException` | Any other ODXBrain status on HTTP 200 (e.g. `500`) | no |
+
+  Branch on `$e->type()` (ODXBrain's `data.type`: `invalid_request_error`, `unsupported_version`, `corpus_unavailable`, `sops_unavailable`, ..., see the `TYPE_*` constants), never on the message. `$e->brainStatus()` is ODXBrain's own status. A bad proxy key (`-32000` / 401) and an invalid license (403) stay plain `OdxException`.
+
 ## Advanced Usage
 ##### Pagination & Filtering (KeywordRequest)
 Use the KeywordRequest helper to handle offset, limit, order, and fields (projection). This allows you to construct queries fluently.

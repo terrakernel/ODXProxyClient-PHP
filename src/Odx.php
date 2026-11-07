@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OdxProxy;
 
+use OdxProxy\Client\OdxBrainClient;
 use OdxProxy\Client\OdxClientConfig;
 use OdxProxy\Client\OdxProxyClient;
 use OdxProxy\Client\OdxV2Client;
@@ -50,6 +51,15 @@ class Odx
     public static function v2(): OdxV2Client
     {
         return self::client()->v2();
+    }
+
+    /**
+     * ODXBrain (ODXProxy 0.10.0+ `/brain/v1/*`) on the global instance. For a
+     * specific tenant use `Odx::with($config)->brain()`.
+     */
+    public static function brain(): OdxBrainClient
+    {
+        return self::client()->brain();
     }
 
     // --- PROXY METHODS (Forward calls to the Global Instance) ---

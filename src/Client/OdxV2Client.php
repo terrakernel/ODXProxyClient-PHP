@@ -220,6 +220,24 @@ final class OdxV2Client
         return self::$supportCache[$target] = $supported;
     }
 
+    /**
+     * The configured instance's facts for ODXBrain, from the JSON-2 version banner:
+     * `['odooVersion' => '20.0', 'edition' => 'enterprise'|'community']`. The keys
+     * match OdxBrainClient's parameter names, so they spread as named arguments:
+     *
+     *     Odx::brain()->resolveModel('unpaid invoices', ...Odx::v2()->brainFacts());
+     *
+     * Cached per Odoo URL for the life of the PHP process.
+     */
+    public function brainFacts(bool $refresh = false): array
+    {
+        return OdxBrainClient::cachedFacts(
+            $this->config->instanceUrl,
+            $refresh,
+            fn() => OdxBrainClient::factsFromV2Version($this->version())
+        );
+    }
+
     // --- Helpers -----------------------------------------------------------------
 
     /**

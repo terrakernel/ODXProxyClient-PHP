@@ -25,6 +25,7 @@ trait MockGatewayServer
         $this->port = $this->freePort();
         $this->baseUrl = "http://127.0.0.1:{$this->port}";
         @unlink($this->rawFile());
+        @unlink($this->brainFile());
 
         $this->proc = proc_open(
             [PHP_BINARY, '-S', "127.0.0.1:{$this->port}", __DIR__ . '/server/router.php'],
@@ -59,12 +60,27 @@ trait MockGatewayServer
             proc_close($this->proc);
         }
         @unlink($this->rawFile());
+        @unlink($this->brainFile());
         OdxProxyClient::close(); // reset the shared static curl handle between tests
     }
 
     private function rawFile(): string
     {
         return sys_get_temp_dir() . "/odx-mock-v2-{$this->port}.json";
+    }
+
+    private function brainFile(): string
+    {
+        return sys_get_temp_dir() . "/odx-mock-brain-{$this->port}.json";
+    }
+
+    /**
+     * The last /brain request the mock gateway received:
+     * `['method', 'path', 'body' (raw string), 'timeout' (x-request-timeout or null), 'apiKey']`.
+     */
+    private function lastBrainRequest(): array
+    {
+        return json_decode((string) file_get_contents($this->brainFile()), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /** The decoded body of the last v2 request the mock gateway received. */

@@ -12,8 +12,11 @@ class OdxProxyClient
 {
     private OdxClientConfig $config;
     
+    /** Local curl timeout in seconds, above the proxy's own upstream timeouts. */
+    private const DEFAULT_TIMEOUT = 45;
+
     // Reuse curl handle for keep-alive connections in the same request
-    private static $ch = null; 
+    private static $ch = null;
 
     public function __construct(OdxClientConfig $config)
     {
@@ -70,6 +73,47 @@ class OdxProxyClient
     public function v2(): OdxV2Client
     {
         return new OdxV2Client($this, $this->config);
+    }
+
+    /**
+     * ODXBrain (ODXProxy 0.10.0+ `/brain/v1/*`): which Odoo model holds some data,
+     * or which SOP covers a task. Needs no Odoo credentials and never contacts
+     * Odoo. Works the same on `Odx::brain()` and `Odx::with($cfg)->brain()`.
+     */
+    public function brain(): OdxBrainClient
+    {
+        return new OdxBrainClient($this);
+    }
+
+    /**
+     * Odoo's version banner over v1 (`POST /api/odoo/version`), e.g.
+     * `['server_version' => '19.0+e', 'server_serie' => '19.0', ...]`.
+     * Defaults to the configured instance URL. Needs no Odoo credentials.
+     */
+    public function version(?string $url = null, ?string $requestId = null): array
+    {
+        $payload = ['id' => $requestId ?? IdHelper::generate(), 'url' => $url ?? $this->config->instanceUrl];
+        $result = $this->postEnvelope('/api/odoo/version', $payload);
+        return is_array($result) ? $result : [];
+    }
+
+    /**
+     * The configured instance's facts for ODXBrain, from the v1 version banner:
+     * `['odooVersion' => '19.0', 'edition' => 'enterprise'|'community']`. The keys
+     * match OdxBrainClient's parameter names, so they spread as named arguments:
+     *
+     *     $brain->resolveModel('unpaid invoices', ...$client->brainFacts());
+     *
+     * Cached per Odoo URL for the life of the PHP process. For Odoo 19+ through
+     * v2 use `->v2()->brainFacts()`.
+     */
+    public function brainFacts(bool $refresh = false): array
+    {
+        return OdxBrainClient::cachedFacts(
+            $this->config->instanceUrl,
+            $refresh,
+            fn() => OdxBrainClient::factsFromV1Version($this->version())
+        );
     }
 
     /**
@@ -168,26 +212,45 @@ class OdxProxyClient
      */
     private function post(string $path, string $jsonPayload): array
     {
+        return $this->request('POST', $path, $jsonPayload);
+    }
+
+    /**
+     * @internal Used by OdxBrainClient. Sends one request over the shared curl
+     * handle: a POST with `$jsonPayload` as the body, or a GET when it is null.
+     * `$requestTimeout` (seconds) is sent as `x-request-timeout`, which bounds the
+     * proxy's upstream hop; the local curl timeout is kept above it.
+     * Returns [body, httpStatus]; throws only when no response arrived.
+     *
+     * @return array{0: string, 1: int}
+     */
+    public function request(string $method, string $path, ?string $jsonPayload = null, ?int $requestTimeout = null): array
+    {
         if (self::$ch === null) {
             self::$ch = curl_init();
             curl_setopt_array(self::$ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_CONNECTTIMEOUT => 10,
-                CURLOPT_TIMEOUT => 45,
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/json; charset=utf-8',
-                    'Accept: application/json'
-                ],
             ]);
         }
 
-        curl_setopt(self::$ch, CURLOPT_URL, $this->config->gatewayUrl . $path);
-        curl_setopt(self::$ch, CURLOPT_HTTPHEADER, [
+        $headers = [
             'Content-Type: application/json',
             'X-Api-Key: ' . $this->config->apiKey
-        ]);
-        curl_setopt(self::$ch, CURLOPT_POST, true);
-        curl_setopt(self::$ch, CURLOPT_POSTFIELDS, $jsonPayload);
+        ];
+        if ($requestTimeout !== null && $requestTimeout > 0) {
+            $headers[] = 'X-Request-Timeout: ' . $requestTimeout;
+        }
+
+        curl_setopt(self::$ch, CURLOPT_URL, $this->config->gatewayUrl . $path);
+        curl_setopt(self::$ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt(self::$ch, CURLOPT_TIMEOUT, max(self::DEFAULT_TIMEOUT, ($requestTimeout ?? 0) + 5));
+        if ($method === 'GET') {
+            curl_setopt(self::$ch, CURLOPT_HTTPGET, true);
+        } else {
+            curl_setopt(self::$ch, CURLOPT_POST, true);
+            curl_setopt(self::$ch, CURLOPT_POSTFIELDS, $jsonPayload ?? '');
+        }
 
         $response = curl_exec(self::$ch);
         $httpCode = curl_getinfo(self::$ch, CURLINFO_HTTP_CODE);
@@ -198,7 +261,7 @@ class OdxProxyClient
 
         return [$response, (int) $httpCode];
     }
-    
+
     // Allow releasing the connection explicitly if needed.
     // curl_close() has been a no-op since PHP 8.0; dropping the last reference frees the handle.
     public static function close(): void {

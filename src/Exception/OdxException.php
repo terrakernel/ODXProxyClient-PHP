@@ -16,6 +16,11 @@ class OdxException extends \RuntimeException
     public const PROXY_INTERNAL = -32005;
     public const JSON2_UNAVAILABLE = -32006;
     public const INVALID_REQUEST = -32007;
+    /** ODXBrain (`/brain/*`, ODXProxy 0.10.0+); see OdxBrainException and its subclasses. */
+    public const BRAIN_NOT_INSTALLED = -32008;
+    public const BRAIN_UNREACHABLE = -32009;
+    public const BRAIN_TIMEOUT = -32010;
+    public const BRAIN_MISCONFIGURED = -32011;
 
     public int $statusCode;
     public ?array $data;
